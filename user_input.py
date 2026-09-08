@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from analysis import analyze_resume
-from skill_matcher import get_boosted_skill_profile
+from skill_matcher import get_boosted_skill_profile, resolve_occupation_candidates
 
 BASE_DIR = Path(__file__).resolve().parent
 ALLOWED_RESUME_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
@@ -35,6 +35,19 @@ def home(request: Request):
 @app.get("/analyze", response_class=HTMLResponse)
 def analyze_page(request: Request):
     return templates.TemplateResponse(request, "analyze.html")
+
+
+@app.post("/api/resolve-occupation")
+async def resolve_occupation_route(occupation: str = Form(...)):
+    occupation = occupation.strip()
+    if not occupation:
+        raise HTTPException(400, "Occupation is required.")
+
+    candidates = resolve_occupation_candidates(occupation)
+    if not candidates:
+        raise HTTPException(400, f"No O*NET occupation found matching {occupation!r}.")
+
+    return {"occupation_query": occupation, "candidates": candidates}
 
 
 @app.post("/api/analyze")

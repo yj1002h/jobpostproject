@@ -84,6 +84,37 @@ def resolve_occupation(occupation_query: str) -> str | None:
     return lookup[close[0]] if close else None
 
 
+def resolve_occupation_candidates(occupation_query: str, n: int = 5) -> list[dict]:
+    """Like resolve_occupation, but returns the top-n O*NET occupations
+    matching the free-text query instead of committing to the single best
+    one, so the student can pick their intended occupation from a shortlist."""
+    lookup = _title_lookup()
+    norm = occupation_query.strip().lower().replace("_", " ")
+
+    # over-fetch keys since a title and several of its related titles can all
+    # match and collapse to the same canonical occupation once deduped below
+    ranked_keys = difflib.get_close_matches(norm, lookup.keys(), n=n * 5, cutoff=0.3)
+
+    archive = get_archive()
+    candidates: list[dict] = []
+    seen_titles: set[str] = set()
+    for key in ranked_keys:
+        title = lookup[key]
+        if title in seen_titles:
+            continue
+        seen_titles.add(title)
+        candidates.append(
+            {
+                "title": title,
+                "onet_code": archive.loc[title, "onet_code"],
+                "match_score": round(difflib.SequenceMatcher(None, norm, key).ratio(), 3),
+            }
+        )
+        if len(candidates) == n:
+            break
+    return candidates
+
+
 @lru_cache(maxsize=1)
 def _software_examples_table() -> pd.DataFrame:
     return pd.read_csv(
