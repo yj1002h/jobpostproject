@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analyze &middot; Skill Gap Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  main { max-width: 620px; margin: 0 auto; padding: 56px 20px 88px; }
+  .intro { margin-bottom: 32px; border-left: 3px solid var(--accent); padding-left: 20px; }
+  .intro h1 { font-family: var(--serif); font-weight: 500; font-size: 28px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .intro p { color: var(--muted); margin: 0; font-size: 15px; }
+
+  .card.form-card { padding: 32px; }
+  form { display: flex; flex-direction: column; gap: 22px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 480px) { .row { grid-template-columns: 1fr; } }
+
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    color: var(--muted);
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--ink);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--card);
+  }
+
+  .dropzone {
+    position: relative;
+    display: block;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--bg);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: #fbf1ec; }
+  .dropzone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .dropzone .icon { margin-bottom: 10px; color: var(--muted); }
+  .dropzone .icon svg { width: 22px; height: 22px; }
+  .dropzone .primary-text { font-size: 14px; font-weight: 600; }
+  .dropzone .primary-text .accent { color: var(--accent); }
+  .dropzone .hint { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--muted); margin-top: 6px; }
+  .dropzone .filename { font-size: 13px; font-weight: 600; color: var(--accent); margin-top: 8px; }
+
+  button[type="submit"] { width: 100%; }
+
+  #error {
+    display: none;
+    margin-top: 18px;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    background: var(--danger-bg);
+    color: var(--danger);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  #results { display: none; margin-top: 26px; padding: 30px; }
+  #results h2 { font-family: var(--serif); font-weight: 500; font-size: 20px; margin: 0 0 4px; }
+  #results .meta { font-family: var(--mono); color: var(--muted); font-size: 12px; letter-spacing: 0.02em; margin-bottom: 22px; }
+
+  .skill-row { margin-bottom: 18px; }
+  .skill-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 7px; }
+  .skill-name { font-weight: 700; }
+  .skill-name .tag {
+    font-family: var(--mono); text-transform: uppercase;
+    font-size: 10px; font-weight: 600; color: var(--muted);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 2px 7px; margin-left: 8px;
+  }
+  .skill-score { font-family: var(--mono); color: var(--ink); font-weight: 600; }
+  .bar-track { height: 6px; background: var(--bg); border-radius: 0; overflow: hidden; }
+  .bar-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.5s ease;
+    width: 0%;
+  }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/"><span class="dot"></span>Skill Gap Finder</a>
+    <div class="links">
+      <a class="muted" href="/">Home</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="intro">
+      <h1>Analyze your fit</h1>
+      <p>Enter your target role and region, then upload your resume.</p>
+    </div>
+
+    <div class="card form-card">
+      <form id="analyze-form">
+        <div class="row">
+          <div>
+            <label for="occupation">Desired occupation</label>
+            <input type="text" id="occupation" name="occupation" placeholder="e.g. Data Scientist" required>
+          </div>
+          <div>
+            <label for="region">Desired region</label>
+            <input type="text" id="region" name="region" placeholder="e.g. Pittsburgh" required>
+          </div>
+        </div>
+
+        <div>
+          <label for="resume">Resume</label>
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx,.txt" required>
+            <div class="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <path d="M12 12v6"/>
+                <path d="M9.5 14.5 12 12l2.5 2.5"/>
+              </svg>
+            </div>
+            <div class="primary-text"><span class="accent">Click to upload</span> or drag and drop</div>
+            <div class="hint">PDF &middot; DOC &middot; DOCX &middot; TXT</div>
+            <div class="filename" id="filename"></div>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submit-btn">Analyze</button>
+      </form>
+
+      <div id="error"></div>
+    </div>
+
+    <div id="results" class="card">
+      <h2 id="result-title"></h2>
+      <div class="meta" id="result-meta"></div>
+      <div id="skill-list"></div>
+    </div>
+  </main>
+
+<script>
+const form = document.getElementById("analyze-form");
+const submitBtn = document.getElementById("submit-btn");
+const errorBox = document.getElementById("error");
+const results = document.getElementById("results");
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("resume");
+const filenameEl = document.getElementById("filename");
+
+fileInput.addEventListener("change", () => {
+  filenameEl.textContent = fileInput.files[0] ? fileInput.files[0].name : "";
+});
+
+["dragenter", "dragover"].forEach((evt) =>
+  dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("dragover"); })
+);
+["dragleave", "drop"].forEach((evt) =>
+  dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("dragover"); })
+);
+dropzone.addEventListener("drop", (e) => {
+  const dropped = e.dataTransfer.files;
+  if (dropped.length) {
+    fileInput.files = dropped;
+    filenameEl.textContent = dropped[0].name;
+  }
+});
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errorBox.style.display = "none";
+  results.style.display = "none";
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner"></span>Analyzing...';
+
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      body: new FormData(form),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || data.error || "Something went wrong.");
+    }
+
+    renderResults(data);
+  } catch (err) {
+    errorBox.textContent = err.message;
+    errorBox.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Analyze";
+  }
+});
+
+function renderResults(data) {
+  const profile = data.skill_profile;
+  document.getElementById("result-title").textContent = profile.resolved_title;
+  document.getElementById("result-meta").textContent =
+    `Matched from "${profile.occupation_query}" · ${profile.jobs_pulled} live postings analyzed`;
+
+  const list = document.getElementById("skill-list");
+  list.innerHTML = "";
+  for (const skill of profile.skills) {
+    const pct = Math.round(skill.boosted_importance * 100);
+    const row = document.createElement("div");
+    row.className = "skill-row";
+    row.innerHTML = `
+      <div class="skill-head">
+        <span class="skill-name">${skill.skill_name}<span class="tag">${skill.source}</span></span>
+        <span class="skill-score">${pct}%</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+    `;
+    list.appendChild(row);
+  }
+  results.style.display = "block";
+}
+</script>
+</body>
+</html>
