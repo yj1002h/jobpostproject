@@ -6,8 +6,12 @@
   --border: #e4dcc9;
   --accent: #b3441f;
   --accent-dark: #8f3517;
-  --danger: #a3291c;
-  --danger-bg: #faece9;
+  --danger: #b3261e;
+  --danger-bg: #fbeae7;
+  --warning: #c9820a;
+  --warning-bg: #fdf1dc;
+  --success: #1e7a4c;
+  --success-bg: #e8f4ec;
   --radius: 3px;
   --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --serif: "Fraunces", Georgia, "Times New Roman", serif;

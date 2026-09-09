@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=2">
 <style>
   main { max-width: 620px; margin: 0 auto; padding: 56px 20px 88px; }
   .intro { margin-bottom: 32px; border-left: 3px solid var(--accent); padding-left: 20px; }
@@ -107,7 +107,31 @@
   #results h2 { font-family: var(--serif); font-weight: 500; font-size: 20px; margin: 0 0 4px; }
   #results .meta { font-family: var(--mono); color: var(--muted); font-size: 12px; letter-spacing: 0.02em; margin-bottom: 22px; }
 
-  .skill-row { margin-bottom: 18px; }
+  .legend {
+    display: none;
+    margin: -4px 0 20px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+  .legend.visible { display: block; }
+  .legend-row { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .legend-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .legend-row .dot.cat-missing { background: var(--danger); }
+  .legend-row .dot.cat-need-work { background: var(--warning); }
+  .legend-row .dot.cat-deemed-enough { background: var(--success); }
+  .legend-note { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin: 8px 0 0; }
+
+  .skill-row {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border-left: 3px solid transparent;
+  }
+  .skill-row.cat-missing { border-left-color: var(--danger); background: var(--danger-bg); }
+  .skill-row.cat-need-work { border-left-color: var(--warning); background: var(--warning-bg); }
+  .skill-row.cat-deemed-enough { border-left-color: var(--success); background: var(--success-bg); }
   .skill-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 7px; }
   .skill-name { font-weight: 700; }
   .skill-name .tag {
@@ -190,6 +214,18 @@
     <div id="results" class="card">
       <h2 id="result-title"></h2>
       <div class="meta" id="result-meta"></div>
+      <div class="legend" id="legend">
+        <div class="legend-row"><span class="dot cat-missing"></span>Missing</div>
+        <div class="legend-row"><span class="dot cat-need-work"></span>Need work</div>
+        <div class="legend-row"><span class="dot cat-deemed-enough"></span>Deemed enough</div>
+        <p class="legend-note">
+          These are <em>relative</em> priority rankings, not a measure of how well you know a skill:
+          each skill is compared only against the others in this list, on how important it is for this
+          role versus how much resume evidence backs it up. A skill can show green because it isn't very
+          important to this role -- even with no evidence for it in your resume -- not because your resume
+          proves you have it.
+        </p>
+      </div>
       <div id="skill-list"></div>
     </div>
   </main>
@@ -319,12 +355,15 @@ function renderResults(data) {
   document.getElementById("result-meta").textContent =
     `Matched from "${profile.occupation_query}" · ${profile.jobs_pulled} live postings analyzed`;
 
+  const hasCategories = profile.skills.some((s) => s.category);
+  document.getElementById("legend").classList.toggle("visible", hasCategories);
+
   const list = document.getElementById("skill-list");
   list.innerHTML = "";
   for (const skill of profile.skills) {
     const pct = Math.round(skill.boosted_importance * 100);
     const row = document.createElement("div");
-    row.className = "skill-row";
+    row.className = "skill-row" + (skill.category ? ` cat-${skill.category.replace(/_/g, "-")}` : "");
     row.innerHTML = `
       <div class="skill-head">
         <span class="skill-name">${skill.skill_name}<span class="tag">${skill.source}</span></span>

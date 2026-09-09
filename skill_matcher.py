@@ -206,6 +206,18 @@ def _boost(
     return min(1.0, importance + boost), boost
 
 
+def get_occupation_baseline(title: str) -> tuple[str, list[tuple]]:
+    """(onet_code, skills) for a canonical archive title -- the raw baseline
+    other pipeline stages (resume presence scoring) can reuse without going
+    through the postings-boosting in get_boosted_skill_profile.
+
+    Returns a deep copy of the skill list -- archive.loc hands back the SAME
+    list object on every access, so callers are free to mutate their copy.
+    """
+    row = get_archive().loc[title]
+    return row["onet_code"], copy.deepcopy(row["skills"])
+
+
 def get_boosted_skill_profile(
     occupation_query: str,
     num_jobs: int = 25,
@@ -225,9 +237,7 @@ def get_boosted_skill_profile(
     if title is None:
         raise ValueError(f"No O*NET occupation found matching {occupation_query!r}")
 
-    row = get_archive().loc[title]
-    onet_code = row["onet_code"]
-    skills = copy.deepcopy(row["skills"])  # archive.loc hands back the SAME list object
+    onet_code, skills = get_occupation_baseline(title)
 
     jobs = get_jobs(title, location=location, num_jobs=num_jobs)
     descriptions = [job.get("description", "") for job in jobs]

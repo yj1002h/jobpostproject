@@ -1,6 +1,6 @@
 """
 Front-end entry point (FastAPI): homepage + occupation/region/resume form,
-wired to analysis.analyze_resume for the resume and
+wired to resume_analysis.analyze_resume for the resume and
 skill_matcher.get_boosted_skill_profile(occupation, location=region) for the
 skill profile.
 """
@@ -12,8 +12,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from analysis import analyze_resume
-from skill_matcher import get_boosted_skill_profile, resolve_occupation_candidates
+from resume_analysis import analyze_resume, classify_skill_gaps
+from skill_matcher import (
+    get_boosted_skill_profile,
+    get_occupation_baseline,
+    resolve_occupation,
+    resolve_occupation_candidates,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 ALLOWED_RESUME_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
@@ -66,12 +71,16 @@ async def analyze(
     if not _allowed_resume(resume.filename):
         raise HTTPException(400, "Resume must be a PDF, Word doc, or text file.")
 
-    try:
-        skill_profile = get_boosted_skill_profile(occupation, location=region)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+    title = resolve_occupation(occupation)
+    if title is None:
+        raise HTTPException(400, f"No O*NET occupation found matching {occupation!r}.")
 
-    resume_result = analyze_resume(resume)
+    skill_profile = get_boosted_skill_profile(title, location=region)
+    onet_code, baseline_skills = get_occupation_baseline(title)
+    resume_result = analyze_resume(resume, onet_code, baseline_skills)
+
+    if resume_result["status"] == "ok":
+        skill_profile["skills"] = classify_skill_gaps(skill_profile["skills"], resume_result["skills"])
 
     return {"skill_profile": skill_profile, "resume": resume_result}
 
