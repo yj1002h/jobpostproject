@@ -148,6 +148,31 @@
     transition: width 0.5s ease;
     width: 0%;
   }
+
+  .skill-row.clickable { cursor: pointer; }
+  .skill-row.clickable:hover { filter: brightness(0.97); }
+  .activity-hint {
+    margin-top: 8px; font-family: var(--mono); font-size: 10.5px;
+    color: var(--muted); letter-spacing: 0.03em;
+  }
+  .activity-panel { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); cursor: default; }
+  .activity-loading { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .activity-loading .spinner { border-color: rgba(23,20,15,0.2); border-top-color: var(--ink); }
+  .activity-error { font-size: 13px; color: var(--danger); }
+  .activity-group { margin-bottom: 14px; }
+  .activity-group:last-child { margin-bottom: 0; }
+  .activity-group h4 {
+    font-family: var(--mono); text-transform: uppercase; font-size: 10.5px;
+    letter-spacing: 0.05em; color: var(--muted); margin: 0 0 8px;
+  }
+  .activity-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px; margin-bottom: 8px;
+  }
+  .activity-card:last-child { margin-bottom: 0; }
+  .activity-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .activity-desc { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .activity-raw { font-size: 13px; white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -243,6 +268,7 @@ const pickerMeta = document.getElementById("picker-meta");
 const occupationOptions = document.getElementById("occupation-options");
 const pickerBack = document.getElementById("picker-back");
 const pickerConfirm = document.getElementById("picker-confirm");
+let resumeText = "";
 
 fileInput.addEventListener("change", () => {
   filenameEl.textContent = fileInput.files[0] ? fileInput.files[0].name : "";
@@ -351,6 +377,7 @@ pickerConfirm.addEventListener("click", async () => {
 
 function renderResults(data) {
   const profile = data.skill_profile;
+  resumeText = (data.resume && data.resume.resume_text) || "";
   document.getElementById("result-title").textContent = profile.resolved_title;
   document.getElementById("result-meta").textContent =
     `Matched from "${profile.occupation_query}" · ${profile.jobs_pulled} live postings analyzed`;
@@ -362,18 +389,81 @@ function renderResults(data) {
   list.innerHTML = "";
   for (const skill of profile.skills) {
     const pct = Math.round(skill.boosted_importance * 100);
+    const clickable = skill.category === "missing" || skill.category === "need_work";
     const row = document.createElement("div");
-    row.className = "skill-row" + (skill.category ? ` cat-${skill.category.replace(/_/g, "-")}` : "");
+    row.className = "skill-row"
+      + (skill.category ? ` cat-${skill.category.replace(/_/g, "-")}` : "")
+      + (clickable ? " clickable" : "");
     row.innerHTML = `
       <div class="skill-head">
         <span class="skill-name">${skill.skill_name}<span class="tag">${skill.source}</span></span>
         <span class="skill-score">${pct}%</span>
       </div>
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      ${clickable ? '<div class="activity-hint">Click for activity ideas &rarr;</div><div class="activity-panel" hidden></div>' : ""}
     `;
+    if (clickable) {
+      row.addEventListener("click", () => toggleActivityPanel(row, skill.skill_name));
+    }
     list.appendChild(row);
   }
   results.style.display = "block";
+}
+
+async function toggleActivityPanel(row, skillName) {
+  const panel = row.querySelector(".activity-panel");
+  if (!panel.hidden) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  if (panel.dataset.loaded) return;
+
+  panel.innerHTML = '<div class="activity-loading"><span class="spinner"></span>Generating activity ideas...</div>';
+  panel.addEventListener("click", (e) => e.stopPropagation());
+
+  try {
+    const formData = new FormData();
+    formData.set("skill", skillName);
+    formData.set("resume_text", resumeText);
+    const response = await fetch("/api/activity", { method: "POST", body: formData });
+    const activity = await response.json();
+
+    if (!response.ok) {
+      throw new Error(activity.detail || "Something went wrong.");
+    }
+
+    panel.innerHTML = renderActivityPanel(activity);
+    panel.dataset.loaded = "1";
+  } catch (err) {
+    panel.innerHTML = `<div class="activity-error">${err.message}</div>`;
+  }
+}
+
+function renderActivityPanel(activity) {
+  if (activity.raw) {
+    return `<div class="activity-raw">${escapeHtml(activity.raw)}</div>`;
+  }
+
+  const group = (title, items) => {
+    if (!items || !items.length) return "";
+    const cards = items.map((a) => `
+      <div class="activity-card">
+        <div class="activity-title">${escapeHtml(a.title)}</div>
+        <div class="activity-desc">${escapeHtml(a.description)}</div>
+      </div>
+    `).join("");
+    return `<div class="activity-group"><h4>${title}</h4>${cards}</div>`;
+  };
+
+  return group("Build on what you already have", activity.building_on_existing)
+    + group("New activities to try", activity.new_activities);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
 }
 </script>
 </body>

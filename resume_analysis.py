@@ -245,7 +245,7 @@ def analyze_resume(resume_file, onet_code: str, skills: list[tuple]) -> dict:
         }
 
     presence = score_resume_presence(text, onet_code, skills)
-    return {"filename": resume_file.filename, "status": "ok", "skills": presence}
+    return {"filename": resume_file.filename, "status": "ok", "skills": presence, "resume_text": text}
 
 
 if __name__ == "__main__":

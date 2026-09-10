@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from activity_generation import call_activity_generation
 from resume_analysis import analyze_resume, classify_skill_gaps
 from skill_matcher import (
     get_boosted_skill_profile,
@@ -83,6 +84,14 @@ async def analyze(
         skill_profile["skills"] = classify_skill_gaps(skill_profile["skills"], resume_result["skills"])
 
     return {"skill_profile": skill_profile, "resume": resume_result}
+
+
+@app.post("/api/activity")
+async def activity(skill: str = Form(...), resume_text: str = Form("")):
+    skill = skill.strip()
+    if not skill:
+        raise HTTPException(400, "Skill is required.")
+    return call_activity_generation(skill, resume_text)
 
 
 if __name__ == "__main__":
