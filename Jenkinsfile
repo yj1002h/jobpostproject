@@ -52,7 +52,7 @@ pipeline {
                 COMMAND_ID=$(aws ssm send-command \
                     --instance-ids "$APP_INSTANCE_ID" \
                     --document-name "AWS-RunShellScript" \
-                    --parameters 'commands=["cd /home/ubuntu/jobpostproject && git pull && docker compose up -d --build"]' \
+                    --parameters 'commands=["git config --system --add safe.directory /home/ubuntu/jobpostproject","cd /home/ubuntu/jobpostproject && git pull && docker compose up -d --build"]' \
                     --query "Command.CommandId" --output text)
 
                 aws ssm wait command-executed \
