@@ -65,7 +65,7 @@ pipeline {
         stage('Evaluate') {
             steps {
                 sh '''#!/bin/bash
-                curl -sf "$APP_URL" > /dev/null
+                curl -sf --retry 5 --retry-delay 3 --retry-all-errors "$APP_URL" > /dev/null
                 '''
             }
         }
