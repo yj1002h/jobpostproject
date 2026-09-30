@@ -1,0 +1,9 @@
+.git
+.env
+jobenv/
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/
+.playwright-mcp/
+test_user_input.py
