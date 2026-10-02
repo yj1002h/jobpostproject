@@ -52,7 +52,7 @@ pipeline {
                 COMMAND_ID=$(aws ssm send-command \
                     --instance-ids "$APP_INSTANCE_ID" \
                     --document-name "AWS-RunShellScript" \
-                    --parameters 'commands=["git config --system --add safe.directory /home/ubuntu/jobpostproject","cd /home/ubuntu/jobpostproject && git pull && docker compose up -d --build"]' \
+                    --parameters 'commands=["git config --system --add safe.directory /home/ubuntu/jobpostproject","cd /home/ubuntu/jobpostproject && git pull && docker compose up -d --build","docker image prune -f && docker builder prune -f --filter until=24h"]' \
                     --query "Command.CommandId" --output text)
 
                 # the built-in waiter gives up after ~100s; a full image rebuild takes longer
