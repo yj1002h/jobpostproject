@@ -55,9 +55,23 @@ pipeline {
                     --parameters 'commands=["git config --system --add safe.directory /home/ubuntu/jobpostproject","cd /home/ubuntu/jobpostproject && git pull && docker compose up -d --build"]' \
                     --query "Command.CommandId" --output text)
 
-                aws ssm wait command-executed \
-                    --command-id "$COMMAND_ID" \
-                    --instance-id "$APP_INSTANCE_ID"
+                # the built-in waiter gives up after ~100s; a full image rebuild takes longer
+                for i in $(seq 1 90); do
+                    STATUS=$(aws ssm get-command-invocation \
+                        --command-id "$COMMAND_ID" \
+                        --instance-id "$APP_INSTANCE_ID" \
+                        --query "Status" --output text 2>/dev/null)
+                    case "$STATUS" in
+                        Success) exit 0 ;;
+                        Pending|InProgress|Delayed|"") sleep 10 ;;
+                        *) echo "Deploy command ended with status: $STATUS"
+                           aws ssm get-command-invocation --command-id "$COMMAND_ID" \
+                               --instance-id "$APP_INSTANCE_ID" --query "StandardErrorContent" --output text
+                           exit 1 ;;
+                    esac
+                done
+                echo "Deploy timed out after 15 minutes"
+                exit 1
                 '''
             }
         }
